@@ -125,8 +125,8 @@ You can run without an API key by downloading a `.gguf` model into `models/`.
 !pip -q install -r requirements-local.txt
 !mkdir -p models
 
-# Replace this with a direct download URL to your GGUF model.
-GGUF_URL = "https://example.com/your-model.Q4_K_M.gguf"
+# Small Qwen GGUF model for CPU demos. You can replace it with another GGUF URL.
+GGUF_URL = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
 !wget -O models/local-model.gguf "$GGUF_URL"
 
 from pathlib import Path

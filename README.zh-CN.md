@@ -139,8 +139,8 @@ env_path.write_text(text)
 !pip -q install -r requirements-local.txt
 !mkdir -p models
 
-# 替换成你的 GGUF 模型直链下载地址。
-GGUF_URL = "https://example.com/your-model.Q4_K_M.gguf"
+# 适合 CPU 演示的小体积 Qwen GGUF 模型，也可以替换成其他 GGUF 直链。
+GGUF_URL = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
 !wget -O models/local-model.gguf "$GGUF_URL"
 
 from pathlib import Path
