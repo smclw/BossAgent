@@ -1,0 +1,4 @@
+# Optional local GGUF model support.
+# Install this only when using LLM_PROVIDER=local-folder.
+-r requirements.txt
+llama-cpp-python>=0.3.7
