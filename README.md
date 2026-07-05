@@ -96,6 +96,53 @@ streamlit run app.py
 
 Open the local URL printed by Streamlit, usually `http://localhost:8501`.
 
+## Run on Google Colab
+
+BossAgent can also be launched from Google Colab for quick demos. Colab is best for testing the UI and mock workflows; avoid uploading private customer documents or hard-coding API keys in shared notebooks.
+
+### 1. Clone and install
+
+```python
+!git clone https://github.com/smclw/BossAgent.git
+%cd BossAgent
+!pip -q install -r requirements.txt
+!cp .env.example .env
+```
+
+### 2. Start in mock mode
+
+```python
+!printf "\\nLLM_PROVIDER=mock\\nUSE_MOCK_LLM=true\\n" >> .env
+!streamlit run app.py --server.port 8501 --server.address 0.0.0.0 > streamlit.log 2>&1 &
+```
+
+### 3. Expose the Streamlit page
+
+Colab cannot open `localhost:8501` directly from your browser. Use a temporary tunnel:
+
+```python
+!wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O cloudflared
+!chmod +x cloudflared
+!./cloudflared tunnel --url http://localhost:8501
+```
+
+Open the generated `https://...trycloudflare.com` URL. Keep the Colab cell running while using the app.
+
+### Optional: use an API key safely
+
+For real model calls, store your key in Colab Secrets instead of writing it into the notebook:
+
+```python
+from google.colab import userdata
+api_key = userdata.get("OPENAI_API_KEY")
+
+from pathlib import Path
+env_path = Path(".env")
+text = env_path.read_text()
+text += f"\\nLLM_PROVIDER=openai-compatible\\nUSE_MOCK_LLM=false\\nOPENAI_API_KEY={api_key}\\n"
+env_path.write_text(text)
+```
+
 ## Configuration
 
 BossAgent reads model and runtime settings from `.env`.

@@ -72,6 +72,51 @@ streamlit run app.py
 4. Enter: "Evaluate whether an AI employee configuration service is worth launching."
 5. Start the AI workforce.
 
+## Run on Google Colab
+
+Colab is useful for quick demos when you do not want to set up Python locally. Use mock mode first, and do not upload private data to a shared notebook.
+
+### Clone and Install
+
+```python
+!git clone https://github.com/smclw/BossAgent.git
+%cd BossAgent
+!pip -q install -r requirements.txt
+!cp .env.example .env
+```
+
+### Start Streamlit
+
+```python
+!printf "\\nLLM_PROVIDER=mock\\nUSE_MOCK_LLM=true\\n" >> .env
+!streamlit run app.py --server.port 8501 --server.address 0.0.0.0 > streamlit.log 2>&1 &
+```
+
+### Create a Temporary Public URL
+
+```python
+!wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O cloudflared
+!chmod +x cloudflared
+!./cloudflared tunnel --url http://localhost:8501
+```
+
+Open the generated `trycloudflare.com` URL.
+
+### Optional API Key
+
+Use Colab Secrets:
+
+```python
+from google.colab import userdata
+api_key = userdata.get("OPENAI_API_KEY")
+
+from pathlib import Path
+env_path = Path(".env")
+text = env_path.read_text()
+text += f"\\nLLM_PROVIDER=openai-compatible\\nUSE_MOCK_LLM=false\\nOPENAI_API_KEY={api_key}\\n"
+env_path.write_text(text)
+```
+
 ## Common Issues
 
 ### PowerShell blocks Activate.ps1

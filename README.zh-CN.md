@@ -84,6 +84,53 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
 ```
 
+## Google Colab 运行教程
+
+BossAgent 也可以在 Google Colab 上临时运行，适合快速演示 UI 和 mock 工作流。请不要在公开 Notebook 里硬编码 API Key，也不要上传客户隐私资料。
+
+### 1. 克隆项目并安装依赖
+
+```python
+!git clone https://github.com/smclw/BossAgent.git
+%cd BossAgent
+!pip -q install -r requirements.txt
+!cp .env.example .env
+```
+
+### 2. 用本地演示模式启动
+
+```python
+!printf "\\nLLM_PROVIDER=mock\\nUSE_MOCK_LLM=true\\n" >> .env
+!streamlit run app.py --server.port 8501 --server.address 0.0.0.0 > streamlit.log 2>&1 &
+```
+
+### 3. 生成可访问链接
+
+Colab 里的 `localhost:8501` 不能直接从浏览器打开，需要用临时隧道暴露 Streamlit 页面：
+
+```python
+!wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O cloudflared
+!chmod +x cloudflared
+!./cloudflared tunnel --url http://localhost:8501
+```
+
+运行后打开输出里的 `https://...trycloudflare.com` 链接即可。使用期间请保持该 Colab 单元格运行。
+
+### 可选：安全配置 API Key
+
+如果要调用真实模型，建议把 Key 放在 Colab Secrets，不要直接写进 Notebook：
+
+```python
+from google.colab import userdata
+api_key = userdata.get("OPENAI_API_KEY")
+
+from pathlib import Path
+env_path = Path(".env")
+text = env_path.read_text()
+text += f"\\nLLM_PROVIDER=openai-compatible\\nUSE_MOCK_LLM=false\\nOPENAI_API_KEY={api_key}\\n"
+env_path.write_text(text)
+```
+
 ## 模型配置
 
 在 `.env` 里配置：
