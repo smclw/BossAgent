@@ -379,7 +379,59 @@ def render_sidebar() -> str:
 """,
         unsafe_allow_html=True,
     )
+    render_sidebar_model_launcher()
     return st.sidebar.radio("菜单", ["首页", "新建任务", "上传资料", "历史任务", "系统设置"])
+
+
+def render_sidebar_model_launcher() -> None:
+    config = load_config()
+    provider_keys = list(PROVIDER_LABELS.keys())
+    current_provider = config.effective_provider
+    provider_index = provider_keys.index(current_provider) if current_provider in provider_keys else 0
+
+    with st.sidebar.expander("模型启动方式", expanded=False):
+        st.caption(f"当前：{PROVIDER_LABELS.get(config.effective_provider, config.effective_provider)}")
+        selected_label = st.selectbox(
+            "选择模型模式",
+            list(PROVIDER_LABELS.values()),
+            index=provider_index,
+            key="sidebar_provider",
+        )
+        selected_provider = next(key for key, value in PROVIDER_LABELS.items() if value == selected_label)
+
+        model_name = config.model_name
+        api_base_url = config.api_base_url
+        openai_api_key = config.openai_api_key
+        local_model_dir = config.local_model_dir or str(MODEL_DIR)
+
+        if selected_provider == "openai-compatible":
+            model_name = st.text_input("模型名称", value=config.model_name, key="sidebar_model_name")
+            api_base_url = st.text_input("API Base URL", value=config.api_base_url, key="sidebar_api_base")
+            openai_api_key = st.text_input("API Key", value=config.openai_api_key, type="password", key="sidebar_api_key")
+        elif selected_provider == "local-folder":
+            local_model_dir = st.text_input("GGUF 模型目录", value=local_model_dir, key="sidebar_local_dir")
+            st.caption("把 .gguf 模型放进 models/，或填写完整 .gguf 文件路径。")
+        else:
+            st.caption("无需 API Key，适合演示 UI 和流程。")
+
+        if st.button("应用模型设置", use_container_width=True):
+            save_env_settings(
+                {
+                    "LLM_PROVIDER": selected_provider,
+                    "OPENAI_API_KEY": openai_api_key,
+                    "MODEL_NAME": model_name,
+                    "API_BASE_URL": api_base_url,
+                    "TEMPERATURE": str(config.temperature),
+                    "USE_MOCK_LLM": "true" if selected_provider == "mock" else "false",
+                    "LOCAL_MODEL_DIR": local_model_dir,
+                    "LOCAL_CONTEXT_WINDOW": str(config.local_context_window),
+                    "LOCAL_MAX_TOKENS": str(config.local_max_tokens),
+                    "LOCAL_GPU_LAYERS": str(config.local_gpu_layers),
+                    "LOCAL_CHAT_FORMAT": config.local_chat_format,
+                }
+            )
+            st.success("已保存，正在重载。")
+            st.rerun()
 
 
 def page_heading(kicker: str, title: str, body: str) -> None:

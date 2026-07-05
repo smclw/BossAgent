@@ -131,6 +131,27 @@ text += f"\\nLLM_PROVIDER=openai-compatible\\nUSE_MOCK_LLM=false\\nOPENAI_API_KE
 env_path.write_text(text)
 ```
 
+### 可选：下载本地 GGUF 模型运行
+
+如果不想使用 API Key，也可以在 Colab 里把 `.gguf` 模型下载到 `models/` 文件夹，然后让 BossAgent 直接读取本地模型。Colab CPU 演示建议选择较小的量化 GGUF 模型。
+
+```python
+!pip -q install -r requirements-local.txt
+!mkdir -p models
+
+# 替换成你的 GGUF 模型直链下载地址。
+GGUF_URL = "https://example.com/your-model.Q4_K_M.gguf"
+!wget -O models/local-model.gguf "$GGUF_URL"
+
+from pathlib import Path
+env_path = Path(".env")
+text = env_path.read_text()
+text += "\\nLLM_PROVIDER=local-folder\\nUSE_MOCK_LLM=false\\nLOCAL_MODEL_DIR=models\\nLOCAL_GPU_LAYERS=0\\n"
+env_path.write_text(text)
+```
+
+然后按同样方式启动 Streamlit，并用临时隧道打开页面。应用启动后，左侧边栏也可以直接选择“本地模型文件夹（GGUF）”或“OpenAI-compatible API”。
+
 ## 模型配置
 
 在 `.env` 里配置：

@@ -117,6 +117,27 @@ text += f"\\nLLM_PROVIDER=openai-compatible\\nUSE_MOCK_LLM=false\\nOPENAI_API_KE
 env_path.write_text(text)
 ```
 
+### Optional Local GGUF Model
+
+You can run without an API key by downloading a `.gguf` model into `models/`.
+
+```python
+!pip -q install -r requirements-local.txt
+!mkdir -p models
+
+# Replace this with a direct download URL to your GGUF model.
+GGUF_URL = "https://example.com/your-model.Q4_K_M.gguf"
+!wget -O models/local-model.gguf "$GGUF_URL"
+
+from pathlib import Path
+env_path = Path(".env")
+text = env_path.read_text()
+text += "\\nLLM_PROVIDER=local-folder\\nUSE_MOCK_LLM=false\\nLOCAL_MODEL_DIR=models\\nLOCAL_GPU_LAYERS=0\\n"
+env_path.write_text(text)
+```
+
+Then start Streamlit and open the temporary tunnel URL. Inside the app, the sidebar model selector can switch between API mode and local model folder mode.
+
 ## Common Issues
 
 ### PowerShell blocks Activate.ps1

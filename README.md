@@ -143,6 +143,27 @@ text += f"\\nLLM_PROVIDER=openai-compatible\\nUSE_MOCK_LLM=false\\nOPENAI_API_KE
 env_path.write_text(text)
 ```
 
+### Optional: run with a downloaded local GGUF model
+
+You can also run BossAgent in Colab without an API key by downloading a `.gguf` model into the `models/` folder. Choose a small quantized GGUF model for Colab CPU demos.
+
+```python
+!pip -q install -r requirements-local.txt
+!mkdir -p models
+
+# Replace this URL with a direct download link to your GGUF model.
+GGUF_URL = "https://example.com/your-model.Q4_K_M.gguf"
+!wget -O models/local-model.gguf "$GGUF_URL"
+
+from pathlib import Path
+env_path = Path(".env")
+text = env_path.read_text()
+text += "\\nLLM_PROVIDER=local-folder\\nUSE_MOCK_LLM=false\\nLOCAL_MODEL_DIR=models\\nLOCAL_GPU_LAYERS=0\\n"
+env_path.write_text(text)
+```
+
+Then start Streamlit with the same command and open it through the temporary tunnel. In the app sidebar, choose **Local GGUF model folder** if you want to switch modes after startup.
+
 ## Configuration
 
 BossAgent reads model and runtime settings from `.env`.
@@ -169,6 +190,8 @@ For direct local GGUF loading:
 ```
 
 Then put a `.gguf` model into `models/` or set `LOCAL_MODEL_DIR` to a full `.gguf` file path.
+
+At app startup, the sidebar includes a **Model startup mode** selector. You can switch between mock mode, OpenAI-compatible API, and a local GGUF model folder without editing files manually.
 
 ## Roadmap
 
