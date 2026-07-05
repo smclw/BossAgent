@@ -133,14 +133,15 @@ env_path.write_text(text)
 
 ### 可选：下载本地 GGUF 模型运行
 
-如果不想使用 API Key，也可以在 Colab 里把 `.gguf` 模型下载到 `models/` 文件夹，然后让 BossAgent 直接读取本地模型。Colab CPU 演示建议选择较小的量化 GGUF 模型。
+如果不想使用 API Key，也可以在 Colab 里把 `.gguf` 模型下载到 `models/` 文件夹，然后让 BossAgent 直接读取本地模型。下面默认使用 Qwen3-14B Q4_K_M，比玩具级小模型更接近真实效果，但需要更多内存。Colab 建议使用 GPU 或高内存运行时。
 
 ```python
 !pip -q install -r requirements-local.txt
 !mkdir -p models
 
-# 适合 CPU 演示的小体积 Qwen GGUF 模型，也可以替换成其他 GGUF 直链。
-GGUF_URL = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+# Qwen3 14B GGUF 模型，适合更真实的本地模型演示。
+# 也可以替换成其他 GGUF 直链。
+GGUF_URL = "https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf"
 !wget -O models/local-model.gguf "$GGUF_URL"
 
 from pathlib import Path
@@ -151,6 +152,8 @@ env_path.write_text(text)
 ```
 
 然后按同样方式启动 Streamlit，并用临时隧道打开页面。应用启动后，左侧边栏也可以直接选择“本地模型文件夹（GGUF）”或“OpenAI-compatible API”。
+
+注意：Qwen3-14B Q4_K_M 是数 GB 级模型。如果 Colab 内存不足，请切换到高内存/GPU 运行时，或把链接替换成更小的 GGUF 模型。
 
 ## 模型配置
 

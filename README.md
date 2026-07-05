@@ -145,14 +145,15 @@ env_path.write_text(text)
 
 ### Optional: run with a downloaded local GGUF model
 
-You can also run BossAgent in Colab without an API key by downloading a `.gguf` model into the `models/` folder. Choose a small quantized GGUF model for Colab CPU demos.
+You can also run BossAgent in Colab without an API key by downloading a `.gguf` model into the `models/` folder. The default example below uses Qwen3-14B Q4_K_M, which is much more useful than toy-size models but needs more memory. For Colab, use a GPU or high-RAM runtime when possible.
 
 ```python
 !pip -q install -r requirements-local.txt
 !mkdir -p models
 
-# Small Qwen GGUF model for CPU demos. You can replace it with another GGUF URL.
-GGUF_URL = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+# Qwen3 14B GGUF model for more realistic local demos.
+# You can replace it with another direct GGUF URL.
+GGUF_URL = "https://huggingface.co/Qwen/Qwen3-14B-GGUF/resolve/main/Qwen3-14B-Q4_K_M.gguf"
 !wget -O models/local-model.gguf "$GGUF_URL"
 
 from pathlib import Path
@@ -163,6 +164,8 @@ env_path.write_text(text)
 ```
 
 Then start Streamlit with the same command and open it through the temporary tunnel. In the app sidebar, choose **Local GGUF model folder** if you want to switch modes after startup.
+
+Note: Qwen3-14B Q4_K_M is a multi-GB model. If Colab runs out of memory, switch to a high-RAM/GPU runtime or replace the URL with a smaller GGUF model.
 
 ## Configuration
 
