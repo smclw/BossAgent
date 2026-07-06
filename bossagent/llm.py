@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -82,10 +83,10 @@ class LLMClient:
                 provider="local-folder-error",
             )
 
-        cache_key = str(model_path.resolve())
+        cache_key = self._local_cache_key(model_path)
         if cache_key not in _LOCAL_MODEL_CACHE:
             kwargs: dict[str, Any] = {
-                "model_path": cache_key,
+                "model_path": str(model_path.resolve()),
                 "n_ctx": self.config.local_context_window,
                 "n_gpu_layers": self.config.local_gpu_layers,
                 "verbose": False,
@@ -95,16 +96,120 @@ class LLMClient:
             _LOCAL_MODEL_CACHE[cache_key] = Llama(**kwargs)
 
         llm = _LOCAL_MODEL_CACHE[cache_key]
-        response = llm.create_chat_completion(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=self.config.temperature,
-            max_tokens=self.config.local_max_tokens,
-        )
+        fitted_prompt, max_tokens, was_trimmed = self._fit_local_prompt(llm, system_prompt, prompt)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": fitted_prompt},
+        ]
+
+        try:
+            response = llm.create_chat_completion(
+                messages=messages,
+                temperature=self.config.temperature,
+                max_tokens=max_tokens,
+            )
+        except ValueError as exc:
+            if "exceed context window" not in str(exc):
+                raise
+            context_window_override = self._context_window_from_error(str(exc))
+            retry_prompt, retry_max_tokens, _ = self._fit_local_prompt(
+                llm,
+                system_prompt,
+                prompt,
+                safety_margin=1024,
+                output_cap=512,
+                context_window_override=context_window_override,
+            )
+            response = llm.create_chat_completion(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": retry_prompt},
+                ],
+                temperature=self.config.temperature,
+                max_tokens=retry_max_tokens,
+            )
+            was_trimmed = True
+            max_tokens = retry_max_tokens
+
         content = response["choices"][0]["message"]["content"]
+        if was_trimmed:
+            content += (
+                "\n\n---\n"
+                "> 注：本次使用本地 GGUF 模型，输入内容超过上下文窗口，BossAgent 已自动压缩上下文。"
+                f" 当前上下文窗口：{self._local_context_window(llm)}，输出上限：{max_tokens}。"
+            )
         return LLMResult(content=content, provider=f"local-folder:{model_path.name}")
+
+    def _fit_local_prompt(
+        self,
+        llm: Any,
+        system_prompt: str,
+        prompt: str,
+        safety_margin: int = 512,
+        output_cap: int | None = None,
+        context_window_override: int | None = None,
+    ) -> tuple[str, int, bool]:
+        context_window = max(1024, context_window_override or self._local_context_window(llm))
+        desired_output = output_cap or self.config.local_max_tokens
+        max_tokens = min(desired_output, max(128, context_window // 4))
+
+        system_tokens = self._count_tokens(llm, system_prompt)
+        prompt_tokens = self._count_tokens(llm, prompt)
+        available_prompt_tokens = context_window - system_tokens - max_tokens - safety_margin
+
+        if available_prompt_tokens < 512:
+            max_tokens = max(128, min(512, context_window // 8))
+            available_prompt_tokens = context_window - system_tokens - max_tokens - safety_margin
+
+        available_prompt_tokens = max(256, available_prompt_tokens)
+        if prompt_tokens <= available_prompt_tokens:
+            return prompt, max_tokens, False
+
+        trimmed_prompt = self._trim_text_by_tokens(llm, prompt, available_prompt_tokens)
+        return trimmed_prompt, max_tokens, True
+
+    def _trim_text_by_tokens(self, llm: Any, text: str, max_tokens: int) -> str:
+        tokens = llm.tokenize(text.encode("utf-8"), add_bos=False)
+        if len(tokens) <= max_tokens:
+            return text
+
+        marker = "\n\n[上下文过长，BossAgent 已省略中间部分，仅保留任务开头和最新上下文。]\n\n"
+        marker_tokens = llm.tokenize(marker.encode("utf-8"), add_bos=False)
+        budget = max(128, max_tokens - len(marker_tokens))
+        head_budget = max(64, budget // 3)
+        tail_budget = max(64, budget - head_budget)
+
+        head = llm.detokenize(tokens[:head_budget]).decode("utf-8", errors="ignore")
+        tail = llm.detokenize(tokens[-tail_budget:]).decode("utf-8", errors="ignore")
+        return head + marker + tail
+
+    def _count_tokens(self, llm: Any, text: str) -> int:
+        return len(llm.tokenize(text.encode("utf-8"), add_bos=False))
+
+    def _local_context_window(self, llm: Any) -> int:
+        n_ctx = getattr(llm, "n_ctx", None)
+        if callable(n_ctx):
+            try:
+                return int(n_ctx())
+            except Exception:
+                pass
+        return self.config.local_context_window
+
+    def _context_window_from_error(self, error_message: str) -> int | None:
+        match = re.search(r"context window of (\d+)", error_message)
+        if not match:
+            return None
+        return int(match.group(1))
+
+    def _local_cache_key(self, model_path: Path) -> str:
+        return "|".join(
+            [
+                str(model_path.resolve()),
+                str(self.config.local_context_window),
+                str(self.config.local_gpu_layers),
+                self.config.local_chat_format,
+            ]
+        )
 
     def _find_local_gguf_model(self) -> Path | None:
         model_dir = Path(self.config.local_model_dir).expanduser()

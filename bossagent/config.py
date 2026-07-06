@@ -55,7 +55,7 @@ def load_config() -> AppConfig:
         temperature=float(os.getenv("TEMPERATURE", "0.4")),
         use_mock_llm=os.getenv("USE_MOCK_LLM", "false").lower() in {"1", "true", "yes", "on"},
         local_model_dir=os.getenv("LOCAL_MODEL_DIR", str(MODEL_DIR)).strip(),
-        local_context_window=int(os.getenv("LOCAL_CONTEXT_WINDOW", "4096")),
+        local_context_window=int(os.getenv("LOCAL_CONTEXT_WINDOW", "16384")),
         local_max_tokens=int(os.getenv("LOCAL_MAX_TOKENS", "1024")),
         local_gpu_layers=int(os.getenv("LOCAL_GPU_LAYERS", "0")),
         local_chat_format=os.getenv("LOCAL_CHAT_FORMAT", "").strip(),

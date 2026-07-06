@@ -196,6 +196,8 @@ Then put a `.gguf` model into `models/` or set `LOCAL_MODEL_DIR` to a full `.ggu
 
 At app startup, the sidebar includes a **Model startup mode** selector. You can switch between mock mode, OpenAI-compatible API, and a local GGUF model folder without editing files manually.
 
+For local GGUF mode, BossAgent defaults to `LOCAL_CONTEXT_WINDOW=16384` and automatically compresses long prompts before calling `llama-cpp-python`. If you still see context-window errors, increase `LOCAL_CONTEXT_WINDOW` in `.env`, lower `LOCAL_MAX_TOKENS`, or use a model/runtime with more memory.
+
 ## Roadmap
 
 - v0.1 Local MVP: multi-agent workflow, task input, file parsing, history, and report export. Available.

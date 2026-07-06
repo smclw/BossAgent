@@ -168,3 +168,5 @@ Install optional dependencies:
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-local.txt
 ```
+
+The default `LOCAL_CONTEXT_WINDOW` is `16384`. If a local GGUF model still reports a context-window error, increase `LOCAL_CONTEXT_WINDOW`, lower `LOCAL_MAX_TOKENS`, or use a runtime with more memory.

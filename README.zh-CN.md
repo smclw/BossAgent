@@ -175,6 +175,8 @@ LOCAL_MODEL_DIR=models
 - Ollama / LM Studio 本地 OpenAI-compatible 服务。
 - 本地 GGUF 模型文件夹模式，目前为实验功能。
 
+本地 GGUF 模式默认使用 `LOCAL_CONTEXT_WINDOW=16384`，并会在调用 `llama-cpp-python` 前自动压缩过长上下文。如果仍然出现 context window 报错，可以在 `.env` 里继续增大 `LOCAL_CONTEXT_WINDOW`、降低 `LOCAL_MAX_TOKENS`，或换用内存更充足的运行环境。
+
 ## 使用场景
 
 - 判断一个项目是否值得进入。
