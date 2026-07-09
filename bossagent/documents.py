@@ -8,7 +8,7 @@ from docx import Document
 from pypdf import PdfReader
 
 
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".xls", ".txt"}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".xls", ".csv", ".txt"}
 MAX_EXTRACTED_CHARS = 50000
 
 
@@ -24,6 +24,8 @@ def extract_text(path: Path) -> str:
         return _trim(_extract_docx(path))
     if suffix in {".xlsx", ".xls"}:
         return _trim(_extract_excel(path))
+    if suffix == ".csv":
+        return _trim(_extract_csv(path))
     if suffix == ".txt":
         return _trim(path.read_text(encoding="utf-8", errors="ignore"))
     raise ValueError(f"Unsupported file type: {suffix}")
@@ -54,6 +56,17 @@ def _extract_excel(path: Path) -> str:
         chunks.append(f"\n\n--- Sheet: {sheet_name} ---\n")
         chunks.append(df.head(200).to_markdown(index=False))
     return "\n".join(chunks)
+
+
+def _extract_csv(path: Path) -> str:
+    for encoding in ("utf-8-sig", "utf-8", "gbk"):
+        try:
+            df = pd.read_csv(path, encoding=encoding)
+            return df.head(200).to_markdown(index=False)
+        except UnicodeDecodeError:
+            continue
+    df = pd.read_csv(path, encoding="utf-8", encoding_errors="ignore")
+    return df.head(200).to_markdown(index=False)
 
 
 def combine_texts(texts: Iterable[str]) -> str:

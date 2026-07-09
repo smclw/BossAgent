@@ -18,7 +18,7 @@ English · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) ·
 
 BossAgent is a local-first, extensible AI Agent workspace that helps founders, operators, creators, and teams configure a coordinated team of AI employees.
 
-It is not another chatbot. BossAgent turns business goals into multi-agent workflows: opportunity research, project judgment, content generation, sales follow-up, document analysis, and final executive reporting.
+It is not another chatbot. BossAgent turns business goals into multi-agent workflows: opportunity research, project judgment, scenario simulation, data analytics, content generation, sales follow-up, document analysis, and final executive reporting.
 
 ## Why BossAgent
 
@@ -37,7 +37,9 @@ BossAgent is designed as a practical MVP for local demos, commercial experiments
 | Strategy Advisor Agent | Available | Judges whether a project is worth entering and designs low-cost validation paths. |
 | Content Clone Agent | Available | Drafts social posts, Xiaohongshu content, short-video scripts, and livestream talk tracks. |
 | Sales Follow-up Agent | Available | Creates customer segmentation, follow-up scripts, quote communication, and deal motion. |
-| Document Analyst Agent | Available | Reads PDF, Word, Excel, and TXT files, then extracts summaries and action lists. |
+| Document Analyst Agent | Available | Reads PDF, Word, Excel, CSV, and TXT files, then extracts summaries and action lists. |
+| Scenario Simulation Agent | Available | Local MiroFish-inspired sandbox for multi-role reaction simulation, risk discovery, and decision stress testing. |
+| Data Analytics Agent | Available | Local Data Analytics-inspired workflow for data quality, metric summaries, chart previews, and business recommendations. |
 
 ## Features
 
@@ -48,6 +50,9 @@ BossAgent is designed as a practical MVP for local demos, commercial experiments
 | OpenAI-compatible model support | Available |
 | Local GGUF model folder mode | Experimental |
 | File upload and document analysis | Available |
+| CSV / Excel data analytics page | Available |
+| MiroFish-style scenario simulation task | Available |
+| Dedicated MiroFish x Data Analytics drill lab | Available |
 | SQLite task history | Available |
 | Markdown / DOCX report export | Available |
 | CrewAI-native orchestration | Planned |
@@ -198,10 +203,19 @@ At app startup, the sidebar includes a **Model startup mode** selector. You can 
 
 For local GGUF mode, BossAgent defaults to `LOCAL_CONTEXT_WINDOW=16384` and automatically compresses long prompts before calling `llama-cpp-python`. If you still see context-window errors, increase `LOCAL_CONTEXT_WINDOW` in `.env`, lower `LOCAL_MAX_TOKENS`, or use a model/runtime with more memory.
 
+## MiroFish x Data Analytics Drill Lab
+
+The **Drill Lab** is a standalone local module that combines two workflows:
+
+- Data Analytics layer: reads CSV / Excel files locally, builds a data profile, checks missing values, summarizes numeric and categorical fields, and previews simple charts.
+- MiroFish-inspired simulation layer: uses the data profile as evidence, then simulates multi-role reactions from customers, sales, delivery, competitors, channels, investors, and public opinion.
+
+It is designed for business rehearsals such as launches, pricing, sales motions, channel expansion, and decision stress tests. It does not execute external actions and should be treated as structured scenario rehearsal, not guaranteed prediction.
+
 ## Roadmap
 
 - v0.1 Local MVP: multi-agent workflow, task input, file parsing, history, and report export. Available.
-- v0.2 More specialized agents: founder assistant, research assistant, marketing assistant, and operations assistant. Planned.
+- v0.2 MiroFish-style scenario simulation and local Data Analytics workflow. Available.
 - v0.3 Knowledge base and long-term memory. Planned.
 - v0.4 Browser automation, email, spreadsheets, Feishu, WeCom, Dify, and n8n connectors. Planned.
 - v0.5 Team workspace, multi-user mode, and permissions. Planned.

@@ -13,7 +13,10 @@ TASK_AGENT_MAP = {
     "内容生成": ["content", "chief"],
     "销售跟进": ["sales", "chief"],
     "资料整理": ["document", "chief"],
-    "综合任务": ["opportunity", "strategy", "content", "sales", "chief"],
+    "情景推演": ["scenario", "strategy", "chief"],
+    "数据分析": ["analytics", "chief"],
+    "演练沙盘": ["analytics", "scenario", "strategy", "chief"],
+    "综合任务": ["opportunity", "strategy", "scenario", "analytics", "content", "sales", "chief"],
 }
 
 

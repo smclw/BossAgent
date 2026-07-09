@@ -6,19 +6,21 @@ from typing import List, Tuple
 import streamlit as st
 
 from bossagent.agents import AGENT_SPECS
+from bossagent.analytics import chart_candidates, is_supported_data_file, load_dataframes, profile_datasets, profiles_to_markdown
 from bossagent.config import MODEL_DIR, ROOT_DIR, UPLOAD_DIR, ensure_runtime_dirs, load_config, save_env_settings
 from bossagent.documents import combine_texts, extract_text, is_supported_file
 from bossagent.export import save_docx, save_markdown
 from bossagent.llm import LLMClient
 from bossagent.orchestrator import AgentOrchestrator, crewai_available
 from bossagent.safety import safety_notice
+from bossagent.simulation import build_drill_context
 from bossagent.storage import get_task, init_db, list_tasks, save_task
 
 
 st.set_page_config(page_title="BossAgent", page_icon="BA", layout="wide")
 
 
-TASK_TYPES = ["机会判断", "项目决策", "内容生成", "销售跟进", "资料整理", "综合任务"]
+TASK_TYPES = ["机会判断", "项目决策", "情景推演", "数据分析", "演练沙盘", "内容生成", "销售跟进", "资料整理", "综合任务"]
 PROVIDER_LABELS = {
     "mock": "本地演示模式",
     "openai-compatible": "OpenAI-compatible API",
@@ -380,7 +382,7 @@ def render_sidebar() -> str:
         unsafe_allow_html=True,
     )
     render_sidebar_model_launcher()
-    return st.sidebar.radio("菜单", ["首页", "新建任务", "上传资料", "历史任务", "系统设置"])
+    return st.sidebar.radio("菜单", ["首页", "新建任务", "上传资料", "数据分析", "演练沙盘", "历史任务", "系统设置"])
 
 
 def render_sidebar_model_launcher() -> None:
@@ -493,6 +495,23 @@ def save_uploaded_files(files) -> Tuple[List[str], str]:
     return saved_names, combine_texts(extracted_texts)
 
 
+def save_uploaded_data_files(files) -> Tuple[List[str], List[Path]]:
+    saved_names: List[str] = []
+    saved_paths: List[Path] = []
+
+    for uploaded_file in files:
+        if not is_supported_data_file(uploaded_file.name):
+            st.warning(f"暂不支持数据文件类型：{uploaded_file.name}")
+            continue
+        safe_name = Path(uploaded_file.name).name
+        target = UPLOAD_DIR / safe_name
+        target.write_bytes(uploaded_file.getbuffer())
+        saved_names.append(safe_name)
+        saved_paths.append(target)
+
+    return saved_names, saved_paths
+
+
 def render_home() -> None:
     page_heading(
         "24 小时 AI 员工中控台",
@@ -502,7 +521,8 @@ def render_home() -> None:
 
     stat_grid(
         [
-            ("6", "内置 AI 员工"),
+            ("8", "内置 AI 员工"),
+            ("Drill Lab", "MiroFish x Data Analytics 演练沙盘"),
             ("Local-first", "本地运行与本地存储"),
             ("OpenAI-compatible", "兼容云端与本地模型服务"),
             ("MD / DOCX", "报告导出格式"),
@@ -522,7 +542,7 @@ def render_home() -> None:
 <div class="ba-card">
   <div class="ba-agent-line"><div class="ba-agent-name">01 输入目标</div><div class="ba-agent-role">把老板的业务问题、项目想法、客户情况或资料需求输入系统。</div></div>
   <div class="ba-agent-line"><div class="ba-agent-name">02 分配员工</div><div class="ba-agent-role">执行总控根据任务类型选择对应 Agent，必要时加入资料整理助手。</div></div>
-  <div class="ba-agent-line"><div class="ba-agent-name">03 协作分析</div><div class="ba-agent-role">各 Agent 输出专业结论，并把上下文交给总裁办执行官汇总。</div></div>
+  <div class="ba-agent-line"><div class="ba-agent-name">03 协作分析</div><div class="ba-agent-role">各 Agent 输出专业结论；情景推演借鉴 MiroFish 多角色模拟，数据分析借鉴 Data Analytics 工作流。</div></div>
   <div class="ba-agent-line"><div class="ba-agent-name">04 生成报告</div><div class="ba-agent-role">保存历史记录，支持 Markdown 与 DOCX 下载，便于复盘和分享。</div></div>
 </div>
 """,
@@ -547,7 +567,7 @@ def render_new_task(orchestrator: AgentOrchestrator) -> None:
         task_type = st.selectbox("选择任务类型", TASK_TYPES)
         uploaded_files = st.file_uploader(
             "可选：上传补充资料",
-            type=["pdf", "docx", "xlsx", "xls", "txt"],
+            type=["pdf", "docx", "xlsx", "xls", "csv", "txt"],
             accept_multiple_files=True,
         )
 
@@ -589,12 +609,12 @@ def render_upload(orchestrator: AgentOrchestrator) -> None:
     page_heading(
         "Document Intelligence",
         "上传资料",
-        "把 PDF、Word、Excel 或 TXT 交给资料整理助手。系统只读取文本，不执行文件里的任何代码。",
+        "把 PDF、Word、Excel、CSV 或 TXT 交给资料整理助手。系统只读取文本，不执行文件里的任何代码。",
     )
 
     files = st.file_uploader(
-        "上传 PDF、Word、Excel、TXT",
-        type=["pdf", "docx", "xlsx", "xls", "txt"],
+        "上传 PDF、Word、Excel、CSV、TXT",
+        type=["pdf", "docx", "xlsx", "xls", "csv", "txt"],
         accept_multiple_files=True,
     )
     note = st.text_area("补充说明", placeholder="例如：请重点提炼客户需求、报价信息和下一步行动。")
@@ -618,6 +638,178 @@ def render_upload(orchestrator: AgentOrchestrator) -> None:
             task_id = save_task("资料整理", goal, saved_files, result.agent_outputs, result.final_report)
 
         st.success(f"资料整理完成，已保存为历史任务 #{task_id}")
+        render_agent_outputs(result.agent_outputs)
+        render_downloads(result.final_report)
+
+
+def render_data_analytics(orchestrator: AgentOrchestrator) -> None:
+    page_heading(
+        "Data Analytics Lab",
+        "数据分析",
+        "上传 CSV 或 Excel 后，BossAgent 会先做本地数据画像、质量检查和图表预览，再调用数据分析师与总控生成经营分析报告。",
+    )
+
+    files = st.file_uploader(
+        "上传 CSV、Excel",
+        type=["csv", "xlsx", "xls"],
+        accept_multiple_files=True,
+        key="analytics_files",
+    )
+    goal = st.text_area(
+        "分析目标",
+        height=120,
+        placeholder="例如：请分析销售数据的增长机会、异常客户、重点渠道和下一步动作。",
+    )
+
+    card_grid(
+        [
+            ("本地读取", "表格文件只在本地解析，不执行任何上传文件中的代码。"),
+            ("数据画像", "自动输出字段、缺失值、数值摘要、高频类别和预览表。"),
+            ("AI 报告", "把数据画像交给 DataAnalyticsAgent，生成经营洞察和下一步分析建议。"),
+        ]
+    )
+
+    if st.button("启动数据分析", type="primary", use_container_width=True):
+        if not files:
+            st.error("请先上传至少一个 CSV 或 Excel 文件。")
+            return
+
+        with st.spinner("正在读取数据并生成画像..."):
+            saved_files, saved_paths = save_uploaded_data_files(files)
+            datasets = load_dataframes(saved_paths)
+            if not datasets:
+                st.error("没有读取到可分析的数据表。")
+                return
+            profiles = profile_datasets(datasets)
+            analytics_context = profiles_to_markdown(profiles, goal)
+
+        section_title("数据画像")
+        for profile in profiles:
+            with st.expander(f"{profile.file_name} / {profile.sheet_name}", expanded=True):
+                st.write(f"行数：{profile.rows}，列数：{profile.columns}")
+                st.markdown("**字段**：" + "、".join(profile.column_names))
+                st.markdown("**缺失值**")
+                st.write(profile.missing_summary or "未检测到缺失值。")
+                st.markdown("**数据预览**")
+                st.markdown(profile.preview_markdown)
+
+        section_title("图表预览")
+        chart_sets = chart_candidates(datasets)
+        rendered_chart = False
+        for dataset_name, charts in chart_sets.items():
+            for chart_title, chart_df in charts.items():
+                if chart_df.empty:
+                    continue
+                st.markdown(f"**{dataset_name} | {chart_title}**")
+                st.bar_chart(chart_df)
+                rendered_chart = True
+                break
+            if rendered_chart:
+                break
+        if not rendered_chart:
+            st.info("暂未检测到适合直接绘制的数值或类别字段。")
+
+        with st.spinner("DataAnalyticsAgent 正在生成分析报告..."):
+            result = orchestrator.run("数据分析", goal or "请基于上传数据输出经营洞察、风险和下一步动作。", analytics_context)
+            task_id = save_task("数据分析", goal, saved_files, result.agent_outputs, result.final_report)
+
+        st.success(f"数据分析完成，已保存为历史任务 #{task_id}")
+        render_agent_outputs(result.agent_outputs)
+        render_downloads(result.final_report)
+
+
+def render_drill_lab(orchestrator: AgentOrchestrator) -> None:
+    page_heading(
+        "MiroFish x Data Analytics",
+        "演练沙盘",
+        "把真实表格数据变成演练证据，再用多角色模拟推演客户、竞品、渠道、交付和舆论反应，输出一份老板决策沙盘报告。",
+    )
+
+    left, right = st.columns([1.2, 0.8])
+    with left:
+        scenario = st.text_area(
+            "演练主题",
+            height=150,
+            placeholder="例如：我们准备推出 9999 元/年的 BossAgent 企业服务，请基于销售数据推演客户反应、竞品动作和成交路径。",
+        )
+        drill_type = st.selectbox(
+            "演练类型",
+            ["新品发布", "销售成交", "价格调整", "渠道招商", "舆论传播", "组织变革", "投资决策"],
+        )
+        rounds = st.slider("推演轮次", min_value=2, max_value=5, value=3, step=1)
+        files = st.file_uploader(
+            "可选：上传 CSV、Excel 作为演练证据",
+            type=["csv", "xlsx", "xls"],
+            accept_multiple_files=True,
+            key="drill_files",
+        )
+        launch = st.button("启动演练沙盘", type="primary", use_container_width=True)
+
+    with right:
+        card_grid(
+            [
+                ("Data Analytics 层", "读取 CSV / Excel，生成字段、缺失值、数值摘要、类别分布和图表预览。"),
+                ("MiroFish 推演层", "模拟多类角色的初始反应、相互影响、态度变化和扩散路径。"),
+                ("BossAgent 总控层", "把数据证据、角色推演和战略建议汇总成 Markdown / DOCX 报告。"),
+            ]
+        )
+
+    if launch:
+        if not scenario.strip() and not files:
+            st.error("请先填写演练主题，或上传一份可分析的数据。")
+            return
+
+        warning = safety_notice(scenario)
+        if warning:
+            st.warning(warning)
+
+        saved_files: List[str] = []
+        analytics_context = ""
+        datasets = {}
+        profiles = []
+
+        if files:
+            with st.spinner("正在读取数据并生成 Data Analytics 画像..."):
+                saved_files, saved_paths = save_uploaded_data_files(files)
+                datasets = load_dataframes(saved_paths)
+                profiles = profile_datasets(datasets)
+                analytics_context = profiles_to_markdown(profiles, scenario)
+
+            section_title("Data Analytics 画像")
+            for profile in profiles:
+                with st.expander(f"{profile.file_name} / {profile.sheet_name}", expanded=True):
+                    st.write(f"行数：{profile.rows}，列数：{profile.columns}")
+                    st.markdown("**字段**：" + "、".join(profile.column_names))
+                    st.markdown("**缺失值**")
+                    st.write(profile.missing_summary or "未检测到缺失值。")
+                    st.markdown("**数据预览**")
+                    st.markdown(profile.preview_markdown)
+
+            section_title("演练证据图表")
+            chart_sets = chart_candidates(datasets)
+            chart_count = 0
+            for dataset_name, charts in chart_sets.items():
+                for chart_title, chart_df in charts.items():
+                    if chart_df.empty:
+                        continue
+                    st.markdown(f"**{dataset_name} | {chart_title}**")
+                    st.bar_chart(chart_df)
+                    chart_count += 1
+                    if chart_count >= 2:
+                        break
+                if chart_count >= 2:
+                    break
+            if chart_count == 0:
+                st.info("暂未检测到适合直接绘制的数值或类别字段。")
+
+        drill_goal = f"演练类型：{drill_type}\n演练主题：{scenario or '请基于上传数据提出业务演练主题。'}"
+        drill_context = build_drill_context(drill_goal, analytics_context, rounds=rounds)
+
+        with st.spinner("演练沙盘正在运行：数据分析师 -> MiroFish 沙盘推演 -> 战略顾问 -> 总控..."):
+            result = orchestrator.run("演练沙盘", drill_goal, drill_context)
+            task_id = save_task("演练沙盘", drill_goal, saved_files, result.agent_outputs, result.final_report)
+
+        st.success(f"演练完成，已保存为历史任务 #{task_id}")
         render_agent_outputs(result.agent_outputs)
         render_downloads(result.final_report)
 
@@ -785,6 +977,10 @@ def main() -> None:
         render_new_task(orchestrator)
     elif page == "上传资料":
         render_upload(orchestrator)
+    elif page == "数据分析":
+        render_data_analytics(orchestrator)
+    elif page == "演练沙盘":
+        render_drill_lab(orchestrator)
     elif page == "历史任务":
         render_history()
     elif page == "系统设置":

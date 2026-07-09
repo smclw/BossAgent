@@ -72,6 +72,13 @@ streamlit run app.py
 4. Enter: "Evaluate whether an AI employee configuration service is worth launching."
 5. Start the AI workforce.
 
+## Try the Drill Lab
+
+1. Open the **Drill Lab** page.
+2. Enter a scenario, such as: "Rehearse a 9999 CNY/year BossAgent enterprise launch."
+3. Optionally upload a CSV or Excel file with sales, customer, or operations data.
+4. Start the drill. BossAgent will profile the data, preview charts, run MiroFish-style role simulation, and export a final report.
+
 ## Run on Google Colab
 
 Colab is useful for quick demos when you do not want to set up Python locally. Use mock mode first, and do not upload private data to a shared notebook.

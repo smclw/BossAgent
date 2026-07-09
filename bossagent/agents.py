@@ -57,6 +57,28 @@ AGENT_SPECS: Dict[str, AgentSpec] = {
         goal="从资料文本中提炼重点、摘要、行动清单和表格化信息。",
         output_requirements=["重点提炼", "摘要", "行动清单", "表格化信息"],
     ),
+    "scenario": AgentSpec(
+        key="scenario",
+        name="ScenarioSimulationAgent",
+        title="MiroFish 沙盘推演",
+        role=(
+            "多角色情景推演助手，借鉴 MiroFish 的多智能体社会反应模拟思路，"
+            "擅长模拟客户、员工、竞品、渠道、投资人和公众舆论对一个方案的反应。"
+        ),
+        goal="对项目、产品、营销动作或组织决策做多角色反应推演，提前发现阻力、机会和传播路径。",
+        output_requirements=["推演设定", "关键角色画像", "多轮反应链", "机会信号", "阻力与风险", "调整建议"],
+    ),
+    "analytics": AgentSpec(
+        key="analytics",
+        name="DataAnalyticsAgent",
+        title="数据分析师",
+        role=(
+            "数据分析助手，借鉴 Data Analytics 插件的工作流，擅长数据质量检查、"
+            "指标摘要、分组洞察、趋势判断、图表建议和经营动作建议。"
+        ),
+        goal="把表格数据、指标摘要和业务问题转化为可验证、可执行的数据分析报告。",
+        output_requirements=["数据质量", "核心指标", "异常与分组洞察", "图表建议", "经营结论", "下一步分析"],
+    ),
     "chief": AgentSpec(
         key="chief",
         name="ChiefOfStaffAgent",
